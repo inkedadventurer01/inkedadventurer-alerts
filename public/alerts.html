@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerts für @inkedadventurer</title>
+  <style>
+    body { margin:0; padding:20px; background:#0a0a0a; color:white; font-family:Arial, sans-serif; text-align:center; }
+    h1 { color:#ff00cc; margin:20px 0; }
+    input, select, button { width:100%; max-width:400px; padding:15px; margin:10px 0; border-radius:12px; font-size:1.1em; }
+    input, select { background:#1f1f1f; border:none; color:white; }
+    button { background:#ff00cc; border:none; color:white; font-weight:bold; cursor:pointer; }
+    .mode { display:flex; gap:10px; justify-content:center; margin:20px 0; }
+    .mode button { flex:1; max-width:180px; padding:14px; border-radius:12px; }
+    .mode button.active { background:#00ffaa; color:black; }
+    #alert { position:fixed; top:25%; left:50%; transform:translate(-50%, -50%); font-size:2.5em; padding:25px 40px; border-radius:20px; 
+             background:linear-gradient(45deg, #ff00cc, #00ffff); box-shadow:0 0 40px #ff00ff; opacity:0; transition:all 0.5s; max-width:90%; }
+    .show { opacity:1; transform:translate(-50%, -50%) scale(1.1); }
+    .gallery { margin-top:30px; }
+    .sound-btn { padding:12px; margin:5px; background:#222; border-radius:10px; width:48%; display:inline-block; }
+  </style>
+</head>
+<body>
+
+  <h1>🛎️ TikTok Live Alerts</h1>
+  <p>für @inkedadventurer</p>
+
+  <input type="text" id="username" placeholder="Dein TikTok Username (ohne @)" value="">
+  
+  <div class="mode">
+    <button id="allBtn" class="active" onclick="setMode('all')">Alle Alerts</button>
+    <button id="followBtn" onclick="setMode('follow')">Nur Follower</button>
+  </div>
+
+  <button onclick="startAlerts()">Alerts starten</button>
+
+  <div class="gallery">
+    <h3>Sound Galerie</h3>
+    <button class="sound-btn" onclick="testSound('gift')">🎁 Gift</button>
+    <button class="sound-btn" onclick="testSound('follow')">❤️ Follow</button>
+    <button class="sound-btn" onclick="testSound('sticker')">🖼️ Sticker</button>
+    <button class="sound-btn" onclick="testSound('like')">👍 Like</button>
+  </div>
+
+  <div id="alert"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tiktok-live-connector@latest/dist/index.min.js"></script>
+  <script>
+    let currentMode = 'all';
+    let connection = null;
+
+    const sounds = {
+      gift: new Audio('https://freesound.org/data/previews/387/387186_5123854-lq.mp3'),
+      follow: new Audio('https://freesound.org/data/previews/320/320186_5270808-lq.mp3'),
+      sticker: new Audio('https://freesound.org/data/previews/66/66929_931655-lq.mp3'),
+      like: new Audio('https://freesound.org/data/previews/276/276951_5123854-lq.mp3')
+    };
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('allBtn').classList.toggle('active', mode === 'all');
+      document.getElementById('followBtn').classList.toggle('active', mode === 'follow');
+    }
+
+    function showAlert(text, color = '#ff00cc') {
+      const el = document.getElementById('alert');
+      el.textContent = text;
+      el.style.background = `linear-gradient(45deg, ${color}, #00ffff)`;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 4500);
+    }
+
+    function testSound(type) {
+      sounds[type].play();
+    }
+
+    async function startAlerts() {
+      const username = document.getElementById('username').value.trim();
+      if (!username) {
+        alert("Bitte gib deinen TikTok Username ein!");
+        return;
+      }
+
+      if (connection) connection.disconnect();
+
+      try {
+        connection = new TikTokLiveConnector.WebcastPushConnection("inkedadventurer");
+
+        connection.on('gift', data => {
+          if (currentMode === 'follow') return;
+          sounds.gift.play();
+          showAlert(`🎁 ${data.sender.uniqueId} → ${data.gift.name}`, '#ffaa00');
+        });
+
+        connection.on('follow', data => {
+          sounds.follow.play();
+          showAlert(`❤️ Neuer Follower: @${data.uniqueId}`, '#ff00ff');
+        });
+
+        connection.on('chat', data => {
+          if (data.comment && data.comment.includes('�')) {
+            sounds.sticker.play();
+            showAlert(`🖼️ Sticker von @${data.uniqueId}`, '#00ffcc');
+          }
+        });
+
+        await connection.connect();
+        alert(`✅ Alerts für @inkedadventurer gestartet!\nModus: ${currentMode === 'all' ? 'Alle' : 'Nur Follower'}`);
+      } catch(e) {
+        alert("Verbindung fehlgeschlagen. Versuche es in 30 Sekunden nochmal.");
+      }
+    }
+  </script>
+</body>
+</html>
