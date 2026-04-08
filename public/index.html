@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerts für @inkedadventurer</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    body {
+      margin: 0; padding: 0; background: #0f0f0f; color: white;
+      font-family: 'Segoe UI', Arial, sans-serif; height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    h1 { margin: 20px 0 10px; font-size: 1.8em; }
+    .container { width: 90%; max-width: 420px; }
+    
+    input, select, button {
+      width: 100%; padding: 14px; margin: 8px 0;
+      border-radius: 12px; border: none; font-size: 1.1em;
+    }
+    input { background: #1f1f1f; color: white; }
+    button {
+      background: #ff00cc; color: white; font-weight: bold;
+      cursor: pointer;
+    }
+    button:active { background: #cc00aa; }
+
+    .mode {
+      display: flex; gap: 10px; margin: 15px 0;
+    }
+    .mode button {
+      flex: 1; padding: 12px; background: #333;
+    }
+    .mode button.active {
+      background: #00ffaa; color: black;
+    }
+
+    #alert {
+      position: fixed; top: 20%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 2.4em; font-weight: bold; padding: 25px 40px;
+      background: linear-gradient(45deg, #ff00cc, #00ffff);
+      border-radius: 20px; box-shadow: 0 0 40px rgba(255,0,255,0.8);
+      opacity: 0; transition: all 0.4s; text-align: center;
+      max-width: 85%; pointer-events: none;
+    }
+    .show { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+
+    .gallery {
+      margin-top: 20px;
+    }
+    .gallery h3 { margin: 15px 0 8px; color: #aaa; }
+    .sounds {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .sound-btn {
+      padding: 12px 10px; background: #222; border-radius: 10px;
+      font-size: 0.95em; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🛎️ TikTok Alerts</h1>
+  <div class="container">
+    <input type="text" id="username" placeholder="Dein TikTok Username (ohne @)" value="">
+    
+    <div class="mode">
+      <button id="allBtn" class="active" onclick="setMode('all')">Alle Alerts</button>
+      <button id="followBtn" onclick="setMode('follow')">Nur Follower</button>
+    </div>
+
+    <button onclick="connect()">Verbinden & Alerts starten</button>
+
+    <div class="gallery">
+      <h3>Sound Galerie (Beispiele)</h3>
+      <div class="sounds">
+        <button class="sound-btn" onclick="playTest('gift')">🎁 Gift Sound</button>
+        <button class="sound-btn" onclick="playTest('follow')">❤️ Follow Sound</button>
+        <button class="sound-btn" onclick="playTest('sticker')">🖼️ Sticker Sound</button>
+        <button class="sound-btn" onclick="playTest('like')">👍 Like Sound</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="alert"></div>
+
+  <script>
+    let socket;
+    let currentMode = 'all';
+    let audioGift = new Audio('https://freesound.org/data/previews/387/387186_5123854-lq.mp3');
+    let audioFollow = new Audio('https://freesound.org/data/previews/320/320186_5270808-lq.mp3');
+    let audioSticker = new Audio('https://freesound.org/data/previews/66/66929_931655-lq.mp3');
+    let audioLike = new Audio('https://freesound.org/data/previews/276/276951_5123854-lq.mp3');
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('allBtn').classList.toggle('active', mode === 'all');
+      document.getElementById('followBtn').classList.toggle('active', mode === 'follow');
+    }
+
+    function showAlert(text, color = '#ff00cc') {
+      const el = document.getElementById('alert');
+      el.textContent = text;
+      el.style.background = `linear-gradient(45deg, ${color}, #00ffff)`;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 5000);
+    }
+
+    function playTest(type) {
+      if (type === 'gift') audioGift.play();
+      if (type === 'follow') audioFollow.play();
+      if (type === 'sticker') audioSticker.play();
+      if (type === 'like') audioLike.play();
+    }
+
+    function connect() {
+      const username = document.getElementById('username').value.trim();
+      if (!username) {
+        alert("Bitte gib einen TikTok Username ein!");
+        return;
+      }
+
+      if (socket) socket.disconnect();
+
+      socket = io('https://dein-projekt-name.onrender.com');   // ← wird später angepasst
+
+      socket.on('alert', data => {
+        if (currentMode === 'follow' && data.type !== 'follow') return;
+
+        if (data.type === 'gift') {
+          audioGift.play();
+          showAlert(`🎁 ${data.username}\n${data.gift} (${data.diamonds}💎)`, '#ffaa00');
+        }
+        if (data.type === 'follow') {
+          audioFollow.play();
+          showAlert(`❤️ Neuer Follower:\n@${data.username}`, '#ff00ff');
+        }
+        if (data.type === 'sticker') {
+          audioSticker.play();
+          showAlert(`🖼️ Sticker von @${data.username}`, '#00ffcc');
+        }
+        if (data.type === 'like') {
+          audioLike.play();
+          showAlert(`👍 ${data.count} Likes!`, '#00aaff');
+        }
+      });
+
+      alert(`Verbunden! Warte auf Alerts von @inkedadventurer`);
+    }
+
+    // Test-Sounds beim Laden
+    window.onload = () => {
+      document.getElementById('username').value = "deinname"; // Platzhalter
+    };
+  </script>
+</body>
+</html>
